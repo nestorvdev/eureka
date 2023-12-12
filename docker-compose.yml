@@ -1,48 +1,87 @@
 version: '2.1'
 
 services:
+
   eureka-server:
     build: eureka-server
     mem_limit: 512m
     ports:
       - 8761:8761
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8761" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
   config-server:
     build: config-server
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+#    links:
+#      - eureka-server
     mem_limit: 512m
     ports:
       - 8888:8888
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8888/actuator/info" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
   checkout-service:
     build: checkout-service
+    depends_on:
+      config-server:
+        condition: service_healthy
     mem_limit: 512m
     ports:
       - 8081:8080
 #      - 8090:8090
+
   payments-service:
+    depends_on:
+      config-server:
+        condition: service_healthy
     build: payments-service
     mem_limit: 512m
     ports:
       - 8082:8086
 #      - 8086:8086
+
   gateway-server:
+    depends_on:
+      config-server:
+        condition: service_healthy
     build: gateway-service
     mem_limit: 512m
     ports:
-      - 8070:8070
+      - 8071:8071
+
   notifications-service:
+    depends_on:
+      config-server:
+        condition: service_healthy
     build: notifications-service
     mem_limit: 512m
     ports:
       - 8087:8087
+
   product-service:
     build: product-service
+    depends_on:
+      config-server:
+        condition: service_healthy
     mem_limit: 512m
     ports:
       - 8060:8060
+
   rabbit-mq:
     image: rabbitmq:3.12-management
     ports:
         - 5672:5672
         - 15672:15672
+
   keycloack:
     image: quay.io/keycloak/keycloak:22.0.5
     ports:
